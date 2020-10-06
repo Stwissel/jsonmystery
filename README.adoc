@@ -2,7 +2,20 @@
 
 image:https://img.shields.io/badge/vert.x-4.0.0.Beta3-purple.svg[link="https://vertx.io"]
 
-This application was generated using http://start.vertx.io
+Experimenting with JSON Schema validation
+
+== Purpose
+
+Testing JSON submissions against JSON Schema. In a web context this isn't actually necessary,
+since https://vertx-web-site.github.io/docs/vertx-web-openapi/java/[Vert.x OpenAPI] takes care of
+it. So don't get distracted here, the purpose is to test JSON schema validation for JSON that
+happened to come via a different path (e.g eventbus)
+
+Supported endpoints:
+
+- GET Just a message [/]
+- POST a traffic light [/trafficlight]
+- POST a street (contains traffic lights) [/street]
 
 == Building
 

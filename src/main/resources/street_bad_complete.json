@@ -1,0 +1,16 @@
+{
+    "name": "Sesame Street",
+    "description": "Home of the Big Bird",
+    "trafficlights": [
+        {
+            "color": "red",
+            "type": "pedestrian",
+            "location": "21nd Street"
+        },
+        {
+            "color": "blue",
+            "type": "train",
+            "location": "21nd Street"
+        }
+    ]
+}
