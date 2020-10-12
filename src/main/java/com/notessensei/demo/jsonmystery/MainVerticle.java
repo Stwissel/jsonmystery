@@ -1,6 +1,8 @@
 package com.notessensei.demo.jsonmystery;
 
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.TimeUnit;
@@ -31,9 +33,10 @@ public class MainVerticle extends AbstractVerticle {
     final Vertx vertx = Vertx.vertx(options);
     vertx.deployVerticle(verticle)
         .onFailure(Throwable::printStackTrace)
-        .onSuccess(v -> System.out.println("All done"));
+        .onSuccess(v -> System.out.println("Verticle launched"));
   }
 
+  private URI openAPIUri;
   private JsonObject openAPI;
   private SchemaRouter schemaRouter;
   private SchemaParser schemaParser;
@@ -48,7 +51,13 @@ public class MainVerticle extends AbstractVerticle {
 
   }
 
-  public Future<Void> startWebServer() {
+  @Override
+  public void stop(final Promise<Void> stopPromise) throws Exception {
+    System.out.println("Verticle unloaded");
+    stopPromise.complete();
+  }
+
+  Future<Void> startWebServer() {
     return Future.future(startPromise -> {
       final Router router = Router.router(this.getVertx());
       router.route().handler(BodyHandler.create(false));
@@ -68,9 +77,10 @@ public class MainVerticle extends AbstractVerticle {
   }
 
   Schema getSchema(final String pointerString) {
-    final JsonPointer pointer = JsonPointer.from(pointerString);
-    final JsonObject schemaJson = (JsonObject) pointer.queryJson(this.openAPI);
-    return this.schemaParser.parse(schemaJson);
+    return this.schemaRouter.resolveCachedSchema(
+        JsonPointer.from(pointerString),
+        JsonPointer.fromURI(this.openAPIUri),
+        this.schemaParser);
   }
 
   void handleRoot(final RoutingContext ctx) {
@@ -82,7 +92,10 @@ public class MainVerticle extends AbstractVerticle {
     final Schema schema = this.getSchema("/components/schemas/RoadLayout");
     schema.validateAsync(body)
         .onSuccess(v -> ctx.response().end("The submitted road is fine!"))
-        .onFailure(e -> ctx.response().setStatusCode(500).end(e.getMessage()));
+        .onFailure(e -> {
+          e.printStackTrace();
+          ctx.response().setStatusCode(500).end(e.getMessage());
+        });
   }
 
   void handleTrafficLight(final RoutingContext ctx) {
@@ -90,7 +103,10 @@ public class MainVerticle extends AbstractVerticle {
     final Schema schema = this.getSchema("/components/schemas/TrafficLight");
     schema.validateAsync(body)
         .onSuccess(v -> ctx.response().end("The submitted traffic light is complete!"))
-        .onFailure(e -> ctx.response().setStatusCode(500).end(e.getMessage()));
+        .onFailure(e -> {
+          e.printStackTrace();
+          ctx.response().setStatusCode(500).end(e.getMessage());
+        });
   }
 
   Future<Void> loadSchemaStuff() {
@@ -100,11 +116,15 @@ public class MainVerticle extends AbstractVerticle {
       String openAPIString;
       try {
         openAPIString = Resources.toString(url, StandardCharsets.UTF_8);
+        this.openAPIUri = url.toURI();
         this.openAPI = new JsonObject(openAPIString);
+
         final SchemaRouterOptions so = new SchemaRouterOptions();
         this.schemaRouter = SchemaRouter.create(this.getVertx(), so);
+        this.schemaRouter.addJson(this.openAPIUri, this.openAPI);
+
         this.schemaParser = SchemaParser.createOpenAPI3SchemaParser(this.schemaRouter);
-      } catch (final IOException e) {
+      } catch (final IOException | URISyntaxException e) {
         promise.fail(e);
       }
       promise.complete();
