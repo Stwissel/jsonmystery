@@ -76,11 +76,16 @@ public class MainVerticle extends AbstractVerticle {
     });
   }
 
-  Schema getSchema(final String pointerString) {
-    return this.schemaRouter.resolveCachedSchema(
-        JsonPointer.from(pointerString),
-        JsonPointer.fromURI(this.openAPIUri),
-        this.schemaParser);
+  Future<Schema> getSchema(final String pointerString) {
+
+    return this.schemaRouter.resolveRef(JsonPointer.from(pointerString),
+        JsonPointer.fromURI(this.openAPIUri), this.schemaParser);
+
+
+    // return this.schemaRouter.resolveCachedSchema(
+    // JsonPointer.from(pointerString),
+    // JsonPointer.fromURI(this.openAPIUri),
+    // this.schemaParser);
   }
 
   void handleRoot(final RoutingContext ctx) {
@@ -89,8 +94,8 @@ public class MainVerticle extends AbstractVerticle {
 
   void handleStreet(final RoutingContext ctx) {
     final JsonObject body = ctx.getBodyAsJson();
-    final Schema schema = this.getSchema("/components/schemas/RoadLayout");
-    schema.validateAsync(body)
+    this.getSchema("/components/schemas/RoadLayout")
+        .compose(schema -> schema.validateAsync(body))
         .onSuccess(v -> ctx.response().end("The submitted road is fine!"))
         .onFailure(e -> {
           e.printStackTrace();
@@ -100,8 +105,8 @@ public class MainVerticle extends AbstractVerticle {
 
   void handleTrafficLight(final RoutingContext ctx) {
     final JsonObject body = ctx.getBodyAsJson();
-    final Schema schema = this.getSchema("/components/schemas/TrafficLight");
-    schema.validateAsync(body)
+    this.getSchema("/components/schemas/TrafficLight")
+        .compose(schema -> schema.validateAsync(body))
         .onSuccess(v -> ctx.response().end("The submitted traffic light is complete!"))
         .onFailure(e -> {
           e.printStackTrace();
